@@ -16,7 +16,7 @@ def get_git_repo(repo_path: str) -> tuple:
     git_repo = None
     # ------------------------------
     try:
-        git_repo = dulwich.repo.Repo(target_project_dir)
+        git_repo = dulwich.repo.Repo(repo_path)
     except dulwich.errors.NotGitRepository:
         status_msg = "该项目没有被Git所管理"
     else:
