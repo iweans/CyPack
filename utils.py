@@ -4,6 +4,7 @@ import glob
 import shutil
 
 from isort import file
+from pytools import to_uncomplex_dtype
 
 
 _tocompile_ext_list = [
@@ -80,15 +81,17 @@ def copy_project_to(src_dir: str, dst_dir: str,
 
 
 def search_tocompile_files(search_dir: str, 
-                           exclude_files=None, exclude_dirs=None) -> list:
+                           exclude_files=None, exclude_dirs=None) -> tuple:
     orig_cwd = os.getcwd()
     os.chdir(search_dir)
 
     exclude_file_list = exclude_files or []
     exclude_dir_list = exclude_dirs or []
+    print("===", exclude_file_list)
 
 
     tocompile_file_list = []
+    tocompile_cfile_list = []
     for search_ext in _tocompile_ext_list:
         search_glob_pattern = os.path.join(f"**{os.sep}*.{search_ext}")
         for filepath in glob.iglob(search_glob_pattern, recursive=True):
@@ -101,6 +104,7 @@ def search_tocompile_files(search_dir: str,
             
             if filepath in exclude_file_list:
                 continue
+
             flag_in_exclude_dir = False
             for exclude_dirpath in exclude_dir_list:
                 if filepath.startswith(exclude_dirpath):
@@ -110,7 +114,11 @@ def search_tocompile_files(search_dir: str,
                 continue
 
             tocompile_file_list.append(filepath)
+            path_and_purename, ext = os.path.splitext(filepath)
+            c_filepath = f"{path_and_purename}.c"
+
+            tocompile_cfile_list.append(c_filepath)
     
     os.chdir(orig_cwd)
-    return tocompile_file_list
+    return tocompile_file_list, tocompile_cfile_list
 

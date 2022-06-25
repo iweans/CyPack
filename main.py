@@ -58,12 +58,15 @@ assert flag_root_dir_has_init_pyfile == True
 
 exclude_file_relpath_list = ["top_vision.py"]
 # exclude_dir_relpath_list = ["algorithms"]
-exclude_dir_relpath_list = []
-tocompile_file_list = search_tocompile_files(target_package_dir, 
-                                             exclude_files=[os.path.join(target_package_dir, exclude_file_relpath) 
-                                                            for exclude_file_relpath in exclude_file_relpath_list],
-                                             exclude_dirs=[os.path.join(target_package_dir, exclude_dir_relpath)
-                                                           for exclude_dir_relpath in exclude_dir_relpath_list])
+exclude_dir_relpath_list = ["configs"]
+tocompile_file_list, tocompile_cfile_list \
+    = search_tocompile_files(target_package_dir, 
+                             # exclude_files=[os.path.join(target_package_dir, exclude_file_relpath) 
+                             #                for exclude_file_relpath in exclude_file_relpath_list],
+                             exclude_files=exclude_file_relpath_list,
+                             # exclude_dirs=[os.path.join(target_package_dir, exclude_dir_relpath)
+                             #               for exclude_dir_relpath in exclude_dir_relpath_list],
+                             exclude_dirs=exclude_dir_relpath_list)
 
 
 def cythonize_files(target_package_dir: str, to_compile_file_list: list) -> list:
@@ -86,11 +89,15 @@ cythonized_extension_list = cythonize_files(target_package_dir, tocompile_file_l
 if flag_root_dir_has_init_pyfile:
     os.rename(os.path.join(target_package_dir, "__init__pyfile"),
               os.path.join(target_package_dir, "__init__.py"))
+
+
 os.chdir(target_package_dir)
 setup(ext_modules=cythonized_extension_list)
 
 
 for filepath in tocompile_file_list:
     os.remove(filepath)
+for c_filepath in tocompile_cfile_list:
+    os.remove(c_filepath)
 
 shutil.rmtree(os.path.join(target_package_dir, "build"))
