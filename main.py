@@ -1,27 +1,48 @@
 import os
-import time
+import argparse
+import concurrent.futures
 import datetime
 import os.path
 import shutil
+import tarfile
+# ------------------------------
 # from distutils.extension import Extension
 # from distutils.core import setup
-from pprint import pprint
 # ------------------------------
+import time
+
 from setuptools import Extension
 from setuptools import setup
 import Cython
 import Cython.Build
 # ------------------------------
-from repo import get_git_repo, parse_git_version
+from repo import get_git_repo, parse_git_version, parse_workspace_status
 from utils import copy_project_to, search_tocompile_files
+# ------------------------------
+from pprint import pprint
 # ----------------------------------------
 
 
 start_dt = datetime.datetime.now()
 
 
+# args_parser = argparse.ArgumentParser()
+# args_parser.add_argument("src", help="Source directory project in.")
+# args_parser.add_argument("-dst", help="Destination directory packaging to.")
+# args = args_parser.parse_args()
+#
+#
+# print("src =", args.src)
+# print("dst =", args.dst)
+# exit()
+
+
+thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+
+
 TARGET_PROJECT_DIR = "/home/jskj/Desktop/tmp/MXT_QC_TopTally"
 TARGET_PACKAGE_DIR = "/home/jskj/Desktop/tmp/package"
+
 
 USE_THREADS = True
 
@@ -49,15 +70,42 @@ else:
     n_threads = 0
 
 
+pkg_info = {}
 git_version_info = None
 status_flag, status_msg, git_repo = get_git_repo(target_project_dir)
 if not status_flag:
     print(status_msg)
     exit()
-else:
-    git_version_info = parse_git_version(git_repo)
 
-pprint(git_version_info)
+
+git_version_info = parse_git_version(git_repo)
+pkg_info.update(git_version_info)
+
+
+clean_flag, workspace_status_info \
+    = parse_workspace_status(git_repo)
+pkg_info["clean"] = clean_flag
+pkg_info["workspace_status"] = workspace_status_info
+
+flag_continue = True
+if not clean_flag:
+    pprint(pkg_info)
+    tip_msg = "工作区不干净,是否继续打包 [y/N]? "
+    while True:
+        foobar = input(tip_msg)
+        if foobar.lower() == "y":
+            flag_continue = True
+            print("坚持打包!")
+            break
+        elif (foobar.lower() == "n") or (foobar.lower() == ""):
+            flag_continue = False
+            print("放弃打包!")
+            break
+        else:
+            tip_msg = "(输入错误!) 工作区不干净,是否继续打包 [y/N]? "
+            continue
+if not flag_continue:
+    exit()
 
 
 flag_root_dir_has_init_pyfile \
@@ -121,3 +169,21 @@ for c_filepath in tocompile_cfile_list:
     os.remove(c_filepath)
 
 shutil.rmtree(os.path.join(target_package_dir, "build"))
+
+
+def compress_pkg(package_dir: str):
+    basename = os.path.basename(package_dir)
+    pkg_path = f"{package_dir}.tar.gz"
+
+    with tarfile.open(pkg_path, "x:gz") as tar_gz:
+        tar_gz.add(package_dir, arcname=basename)
+
+
+future = thread_pool.submit(compress_pkg, TARGET_PACKAGE_DIR)
+print("开始打 tar.gz 包 ...")
+while True:
+    if future.done():
+        break
+    time.sleep(1)
+print("打包完成 ...")
+
