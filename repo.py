@@ -39,8 +39,8 @@ def parse_git_version(git_repo: dulwich.repo.Repo) -> dict:
     git_describe = porcelain.describe(git_repo)
     # ------------------------------
     return {
-        "branch": git_branch, 
-        "head": git_head_hash,
+        "branch": git_branch.decode(),
+        "head": git_head_hash.decode(),
         "tag": git_describe,
         "commit_timestamp": git_commit_time,
         "commit_datetime": git_commit_datetime.strftime("%Y-%m-%d %H:%M:%S"),
@@ -73,9 +73,11 @@ def parse_workspace_status(git_repo: dulwich.repo.Repo) -> tuple:
     if untracked_list:
         flag_is_clean = False
     # ------------------------------
-    return flag_is_clean, {"add": add_list,
-                           "delete": delete_list,
-                           "modify": modify_list,
-                           "unstaged": unstaged_list,
-                           "untracked": untracked_list}
+    return flag_is_clean, {
+        "add": [i.decode() for i in add_list],
+        "delete": [i.decode() for i in delete_list],
+        "modify": [i.decode() for i in modify_list],
+        "unstaged": [i.decode() for i in unstaged_list],
+        "untracked": [i.decode() for i in untracked_list]
+    }
 

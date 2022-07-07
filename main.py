@@ -1,46 +1,37 @@
+from argument import parse_args
+# parse_args()
+# ------------------------------
 import os
-import argparse
 import concurrent.futures
+import time
 import datetime
 import os.path
+import json
 import shutil
 import tarfile
+from pprint import pprint
 # ------------------------------
 # from distutils.extension import Extension
 # from distutils.core import setup
 # ------------------------------
-import time
-
 from setuptools import Extension
 from setuptools import setup
 import Cython
 import Cython.Build
 # ------------------------------
+from parse import parse_pkg_cfg
 from repo import get_git_repo, parse_git_version, parse_workspace_status
 from utils import copy_project_to, search_tocompile_files
-# ------------------------------
-from pprint import pprint
 # ----------------------------------------
 
 
 start_dt = datetime.datetime.now()
 
 
-# args_parser = argparse.ArgumentParser()
-# args_parser.add_argument("src", help="Source directory project in.")
-# args_parser.add_argument("-dst", help="Destination directory packaging to.")
-# args = args_parser.parse_args()
-#
-#
-# print("src =", args.src)
-# print("dst =", args.dst)
-# exit()
-
-
 thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
 
-TARGET_PROJECT_DIR = "/home/jskj/Desktop/tmp/MXT_QC_TopTally"
+TARGET_PROJECT_DIR = "/data/projects/wai4/crane-container/v3-detection"
 TARGET_PACKAGE_DIR = "/home/jskj/Desktop/tmp/package"
 
 
@@ -51,6 +42,15 @@ target_project_dir = os.path.abspath(TARGET_PROJECT_DIR)
 if not os.path.isdir(target_project_dir):
     print("目标项目路径必须是一个目录")
     exit()
+
+pkg_cfg = parse_pkg_cfg(target_project_dir)
+build_cfg = pkg_cfg.get("build", {})
+
+exclude_file_relpath_list = build_cfg.get("exclude_files", [])
+# exclude_dir_relpath_list = ["algorithms"]
+exclude_dir_relpath_list = build_cfg.get("exclude_dirs", [])
+
+
 target_package_dir = os.path.abspath(TARGET_PACKAGE_DIR)
 if os.path.exists(target_package_dir):
     os.rename(target_package_dir, 
@@ -68,6 +68,9 @@ if USE_THREADS:
     n_threads = os.cpu_count()
 else:
     n_threads = 0
+
+
+
 
 
 pkg_info = {}
@@ -111,11 +114,6 @@ if not flag_continue:
 flag_root_dir_has_init_pyfile \
     = copy_project_to(target_project_dir, target_package_dir, flag_using_link)
 
-assert flag_root_dir_has_init_pyfile == True
-
-exclude_file_relpath_list = ["top_vision.py"]
-# exclude_dir_relpath_list = ["algorithms"]
-exclude_dir_relpath_list = ["configs"]
 tocompile_file_list, tocompile_cfile_list \
     = search_tocompile_files(target_package_dir, 
                              # exclude_files=[os.path.join(target_package_dir, exclude_file_relpath) 
@@ -161,6 +159,13 @@ setup(
     script_args=["build_ext", "--inplace"] + ["-j", f"{n_threads}"] if n_threads else [],
     zip_safe=False,
 )
+
+
+pkg_info_path = os.path.join(target_package_dir, "pkg_info.json")
+with open(pkg_info_path, "w") as f:
+    pprint(pkg_info)
+    json.dump(pkg_info, f, indent=2)
+    f.flush()
 
 
 for filepath in tocompile_file_list:
